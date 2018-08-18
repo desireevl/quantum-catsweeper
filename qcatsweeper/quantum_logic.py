@@ -2,6 +2,7 @@ from qiskit import QuantumProgram
 from collections import Counter
 from enum import Enum
 
+import math
 import operator
 import qconfig
 import random
@@ -23,9 +24,6 @@ class TileItems(Enum):
 
 # if (x,y.tile == TileItems.BOMB)
 # print(int(round(qr.randint(0,20))))
-
-x = [int(round(qr.randint(0,11))) for i in range(20)]
-y = [int(round(qr.randint(0,11))) for i in range(20)]
 
 # print(x)
 # print(y)
@@ -68,16 +66,17 @@ for row in game:
     print(row)
 
 
-def new_game_grid(l):
+def new_game_grid(l, bomb_no=20):
     game_grid = [[TileItems.BLANKS for i in range(l)] for j in range(l)]
 
     # 20 bombs
-    bomb_xy = qr.get_data(data_type='uint16', array_length=20)
+    bomb_xy = qr.get_data(data_type='uint16', array_length=bomb_no)
     bomb_xy = list(map(lambda x: x % l, bomb_xy))
-    bomb_xy = [bomb_xy[i:i+2] for i in range(0, l, 2)]
+    bomb_xy = [bomb_xy[i:i+2] for i in range(0, math.ceil(bomb_no/2), 2)]
 
     for coord in bomb_xy:
-        game_grid[coord[0]][coord[1]] = TileItems.BOMB_UNEXPLODED
+        if len(coord) > 0:
+            game_grid[coord[0]][coord[1]] = TileItems.BOMB_UNEXPLODED
 
     return game_grid
 
