@@ -8,6 +8,7 @@ import quantumrandom as qr
 
 
 class TileItems(Enum):
+    UNCLICKED = -2
     CLICKED = -1
     BLANKS = 0
     GROUP1 = 1
@@ -70,13 +71,11 @@ def new_game_grid(l, bomb_no=20):
     return game_grid
 
 
-def onclick(game, x_pos, y_pos, clicked_tile, qstate):
+def onclick( clicked_tile, num_click):
     """
     params:
-    game: 2 dimensional list
-    x: integer
-    y: interger
     clicked_tile: tile type of the clicked tile
+    num_click: number of times a group has been clicked
     """
     if (clicked_tile == TileItems.BOMB):
         gridScript.h(q[0])
@@ -91,7 +90,7 @@ def onclick(game, x_pos, y_pos, clicked_tile, qstate):
         else:
             return TileItems.BLANKS
 
-    elif (clicked_tile == (TileItems.GROUP1, TileItems.GROUP2)): # 1 click
+    elif (clicked_tile == TileItems.GROUP1 and clicked_title == TileItems.GROUP2): # 1 click
         gridScript.x(q[1])
         gridScript.measure(q[1], c[1])
         results = Q_program.execute(["gridScript"], backend=device, shots=shots, wait=5, timeout=1800)
@@ -108,12 +107,15 @@ def onclick(game, x_pos, y_pos, clicked_tile, qstate):
                     return TileItems.REVEAL_GROUP
 
 
-    # elif (clicked_tile == (TileItems.GROUP3, TileItems.GROUP4)): # 2 clicks
-    #     pass
+    elif (clicked_tile == TileItems.GROUP3 and clicked_title == TileItems.GROUP4)): # 2 clicks
+        if num_clicks == 0:
+            gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[2])
+            return TileItems.CLICKED
+        elif num_clicks == 1:
+                gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[2])
+                gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[2])
+                return TileItems.REVEAL_GROUP
 
 
-    # elif (clicked_tile == (TileItems.GROUP5, TileItems.GROUP6)): # 3 clicks
+    # elif (clicked_tile == TileItems.GROUP5 and clicked_title ==TileItems.GROUP6): # 3 clicks
 
-
-
-        # gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[1])
