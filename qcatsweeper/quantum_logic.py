@@ -17,10 +17,11 @@ class TileItems(Enum):
     GROUP5 = 3
     GROUP6 = -3
     BOMB_UNEXPLODED = 7
-    BOMB_EXPLODED = 8
+    BOMB_EXPLODED = 8    
     REVEAL_GROUP = 9
     POS_EVAL = 42
     NEG_EVAL = -42
+    BOMB_DEFUSED = 84
 
 
 real_device = False
@@ -32,6 +33,21 @@ if real_device:
 
 Q_program = QuantumProgram()
 qiskit.register(qconfig.APItoken, qconfig.config["url"])
+
+
+def get_one_or_zero(grid_script, q, c, index):
+    global Q_program
+    grid_script.measure(q[index], c[index])
+    results = Q_program.execute(
+        ["gridScript"], backend=device, shots=shots, timeout=1800)
+    re = results.get_counts("gridScript")
+    d1 = list(map(lambda x: (x[0], x[1], x[0].count('0')), re.items()))
+    d2 = sorted(d1, key=lambda x: x[2], reverse=True)
+    
+    print(d2)    
+    if d2[0][1] > d2[1][1]:
+        return 0
+    return 1
 
 
 def new_game_grid(l, bomb_no=20):
@@ -70,112 +86,60 @@ def onclick(clicked_tile, num_clicks):
     params:
     clicked_tile: tile type of the clicked tile
     num_click: number of times a group has been clicked
-    """
-    print(clicked_tile, num_clicks)
-
+    """    
     q = Q_program.create_quantum_register("q", 5)
     c = Q_program.create_classical_register("c", 5)
     gridScript = Q_program.create_circuit("gridScript", [q], [c])
 
     if (clicked_tile == TileItems.BOMB_UNEXPLODED):
         gridScript.h(q[0])
-        gridScript.measure(q[0], c[0])
-        results = Q_program.execute(
-            ["gridScript"], backend=device, shots=shots, timeout=1800)
-        re = results.get_counts("gridScript")
 
-        d1 = list(map(lambda x: (x[0], x[1], x[0].count('0')), re.items()))
-        d2 = sorted(d1, key=lambda x: x[2], reverse=True)
-        if d2[0][2] > d2[1][2]:
+        if get_one_or_zero(gridScript, q, c, 0) == 1:
             return TileItems.BOMB_EXPLODED
-        else:
-            return TileItems.BLANKS
+        return TileItems.BOMB_DEFUSED
 
-    elif (clicked_tile == TileItems.GROUP1 or clicked_tile == TileItems.GROUP2):  # 1 click
-        gridScript.x(q[1])
-        gridScript.measure(q[1], c[1])
-        results = Q_program.execute(
-            ["gridScript"], backend=device, shots=shots, timeout=1800)
-        re = results.get_counts("gridScript")
+    elif (clicked_tile == TileItems.GROUP1 or clicked_tile == TileItems.GROUP2):  # 1 click        
+        gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[1])
 
         # is occurence for '00000' > '00001' or the other way
-        if len(re) > 1:
-            d1 = list(map(lambda x: (x[0], x[1], x[0].count('0')), re.items()))
-            d2 = sorted(d1, key=lambda x: x[2], reverse=True)
-            if d2[0][2] > d2[1][2]:
-                return TileItems.REVEAL_GROUP
-            val = list(re.keys())[0]
-            if val.count('1') > val.count('0'):
-                return TileItems.REVEAL_GROUP
-            return None
+        if get_one_or_zero(gridScript, q, c, 1) == 1:
+            return TileItems.REVEAL_GROUP
+        return TileItems.NEG_EVAL
 
     elif (clicked_tile == TileItems.GROUP3 or clicked_tile == TileItems.GROUP4):  # 2 clicks
         if num_clicks == 1:
             gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[2])
-            gridScript.measure(q[2], c[2])
-            results = Q_program.execute(
-                ["gridScript"], backend=device, shots=shots, timeout=1800)
-            re = results.get_counts("gridScript")
-            d1 = list(map(lambda x: (x[0], x[1], x[0].count('0')), re.items()))
-            d2 = sorted(d1, key=lambda x: x[2], reverse=True)
-            if d2[0][2] > d2[1][2]:
+
+            if get_one_or_zero(gridScript, q, c, 2) == 1:
                 return TileItems.POS_EVAL
             return TileItems.NEG_EVAL
-            print(re)
 
         elif num_clicks == 2:
             gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[2])
-            gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[2])
 
-            gridScript.measure(q[2], c[2])
-            results = Q_program.execute(
-                ["gridScript"], backend=device, shots=shots, timeout=1800)
-            re = results.get_counts("gridScript")
-            d1 = list(map(lambda x: (x[0], x[1], x[0].count('0')), re.items()))
-            d2 = sorted(d1, key=lambda x: x[2], reverse=True)
-            if d2[0][2] > d2[1][2]:
+            if get_one_or_zero(gridScript, q, c, 2) == 1:
                 return TileItems.REVEAL_GROUP
             return TileItems.NEG_EVAL
-            print(re)
 
     elif (clicked_tile == TileItems.GROUP5 or clicked_tile == TileItems.GROUP6):  # 3 clicks
         if num_clicks == 1:
-            gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
-            gridScript.measure(q[3], c[3])
-            results = Q_program.execute(
-                ["gridScript"], backend=device, shots=shots, timeout=1800)
-            re = results.get_counts("gridScript")
-            d1 = list(map(lambda x: (x[0], x[1], x[0].count('0')), re.items()))
-            d2 = sorted(d1, key=lambda x: x[2], reverse=True)
-            if d2[0][2] > d2[1][2]:
+            gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[3])
+ 
+            if get_one_or_zero(gridScript, q, c, 3) == 1:
                 return TileItems.POS_EVAL
             return TileItems.NEG_EVAL
 
         elif num_clicks == 2:
-            gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
-            gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
+            gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[3])            
 
-            gridScript.measure(q[3], c[3])
-            results = Q_program.execute(
-                ["gridScript"], backend=device, shots=shots, timeout=1800)
-            re = results.get_counts("gridScript")
-            d1 = list(map(lambda x: (x[0], x[1], x[0].count('0')), re.items()))
-            d2 = sorted(d1, key=lambda x: x[2], reverse=True)
-            if d2[0][2] > d2[1][2]:
+            if get_one_or_zero(gridScript, q, c, 3) == 1:
                 return TileItems.POS_EVAL
             return TileItems.NEG_EVAL
-        elif num_clicks == 3:
-            gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
-            gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
-            gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
 
-            gridScript.measure(q[3], c[3])
-            results = Q_program.execute(
-                ["gridScript"], backend=device, shots=shots, timeout=1800)
-            re = results.get_counts("gridScript")
-            d1 = list(map(lambda x: (x[0], x[1], x[0].count('0')), re.items()))
-            d2 = sorted(d1, key=lambda x: x[2], reverse=True)
-            if d2[0][2] > d2[1][2]:
+        elif num_clicks == 3:
+            gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[3])
+
+            if get_one_or_zero(gridScript, q, c, 3) == 1:
                 return TileItems.REVEAL_GROUP
             return TileItems.NEG_EVAL
 
