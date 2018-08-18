@@ -1,5 +1,6 @@
 from qiskit import QuantumProgram
 from enum import Enum
+from qcatsweeper import qconfig
 
 import math
 import qconfig
@@ -51,8 +52,8 @@ x_neg = random.randint(1,3)
 # print(rand_num2)
 
 
-for row in game:
-    print(row)
+# for row in game:
+#     print(row)
 
 
 def new_game_grid(l, bomb_no=20):
