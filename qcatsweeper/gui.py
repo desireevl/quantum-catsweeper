@@ -1,7 +1,7 @@
 from enum import Enum
 from functools import partial
-# from qcatsweeper.quantum_logic import TileItems
 
+import qcatsweeper.quantum_logic as ql
 import math
 import random
 import pyxel
@@ -22,7 +22,7 @@ def is_within(x, y, pos):
 
 
 class QuantumCatsweeperApp:
-    def __init__(self, width=153, height=170, grid_size=12):
+    def __init__(self, width=153, height=170):
         # Initialize game state
         self.game_state = GameState.INTRO
 
@@ -35,15 +35,14 @@ class QuantumCatsweeperApp:
         self._width = width
         self._height = height
 
-        self._grid_size = grid_size
+        self._grid_size = 12
         self._grid_start_x = 5
         self._grid_start_y = 22
         self._grid_draw_size = 12
 
         self.game_grid = []
         self.elapsed_frames = 0
-        self.revealed_groups = {}
-        self.reset_game()
+        self.revealed_groups = {}        
 
         self._play_real_button_pos = self.pyxel_button_centered('Play (Real)     ', 100)
         self._play_simulated_button_pos = self.pyxel_button_centered('Play (Simulated)', 115)
@@ -141,14 +140,14 @@ class QuantumCatsweeperApp:
                 # TODO: Draw based on grid data
                 pyxel.rect(_x, _y, _x + self._grid_draw_size -
                            2, _y - 2 + self._grid_draw_size, 5)
-                pyxel.text(_x + 2, _y + 2, str(self.game_grid[row][col]), 3)
+                pyxel.text(_x + 2, _y + 2, str(self.game_grid[row][col].value), 3)
 
     def draw_playscreen(self):
         self.pyxel_button('Back', 5, 5)
 
         self.draw_grid()
 
-        pyxel.text(50, 8, 'SWEEP THE CATS!', 7)
+        pyxel.text(50, 8, 'CATSWEEPER 9000', 7)
 
         # Convert text to "00:00" format
         display_mins = int(self.elapsed_frames / (60 * 30))  # 30 FPS
@@ -226,10 +225,7 @@ class QuantumCatsweeperApp:
 
     #### Game State ####
     def reset_game(self):
-        self.game_grid = [
-            [0 for x in range(self._grid_size)] for y in range(self._grid_size)]
-        self.game_grid[0][1] = 1
-        self.game_grid[7][1] = 5
+        self.game_grid = ql.new_game_grid(self._grid_size, bomb_no=20)
 
         self.elapsed_frames = 0
         self.revealed_groups = {}
