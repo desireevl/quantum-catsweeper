@@ -22,13 +22,9 @@ c = Q_program.create_classical_register("c", 5)
 gridScript = Q_program.create_circuit("gridScript", [q], [c])
 
 
-if num_clicks == 0:
-    gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[2])
-    return TileItems.CLICKED
-elif num_clicks == 1:
-    gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[2])
-    gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[2])
-    return TileItems.REVEAL_GROUP
+gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[2])
+gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[2])
+gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[2])
 
 gridScript.measure(q[2], c[2])
 results = Q_program.execute(["gridScript"], backend=device, shots=shots, wait=5, timeout=1800)
