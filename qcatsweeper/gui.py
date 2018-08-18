@@ -1,7 +1,7 @@
 from enum import Enum
 from functools import partial
-# from qcatsweeper.quantum_logic import TileItems
 
+import qcatsweeper.quantum_logic as ql
 import math
 import random
 import pyxel
@@ -22,7 +22,7 @@ def is_within(x, y, pos):
 
 
 class QuantumCatsweeperApp:
-    def __init__(self, width=153, height=170, grid_size=12):
+    def __init__(self, width=153, height=170):
         # Initialize game state
         self.game_state = GameState.INTRO
 
@@ -35,19 +35,22 @@ class QuantumCatsweeperApp:
         self._width = width
         self._height = height
 
-        self._grid_size = grid_size
+        self._grid_size = 12
         self._grid_start_x = 5
         self._grid_start_y = 22
         self._grid_draw_size = 12
 
         self.game_grid = []
         self.elapsed_frames = 0
-        self.revealed_groups = {}
-        self.reset_game()
+        self.revealed_tiles = {}
+        self.revealed_groups_state = {}
 
-        self._play_real_button_pos = self.pyxel_button_centered('Play (Real)     ', 100)
-        self._play_simulated_button_pos = self.pyxel_button_centered('Play (Simulated)', 115)
-        self._help_button_pos = self.pyxel_button_centered('      Help      ', 130)
+        self._play_real_button_pos = self.pyxel_button_centered(
+            'Play (Real)     ', 100)
+        self._play_simulated_button_pos = self.pyxel_button_centered(
+            'Play (Simulated)', 115)
+        self._help_button_pos = self.pyxel_button_centered(
+            '      Help      ', 130)
         self._help_back_button_pos = self.pyxel_button_centered('Back', 135)
         self._PLAYING_REAL_back_buttom_pos = self.pyxel_button('Back', 5, 5)
 
@@ -99,16 +102,29 @@ class QuantumCatsweeperApp:
 
     def handle_PLAYING_REAL_events(self):
         if pyxel.btnp(pyxel.KEY_LEFT_BUTTON):
-            # TODO: Handle on mouse click
-            row, col = self.get_grid_row_col_from_xy(
-                pyxel.mouse_x, pyxel.mouse_y)
-
             mouse_within = partial(is_within, pyxel.mouse_x, pyxel.mouse_y)
 
             if mouse_within(self._PLAYING_REAL_back_buttom_pos):
                 self.game_state = GameState.INTRO
                 pyxel.stop(self._PLAYING_REAL_bg)
                 pyxel.play(self._main_bg, [0, 1], loop=True)
+
+            # If user is clicking
+            if pyxel.mouse_x > self._grid_start_x and pyxel.mouse_y > self._grid_start_y:
+                row, col = self.get_grid_row_col_from_xy(
+                    pyxel.mouse_x, pyxel.mouse_y)
+
+                clicked_tile = self.game_grid[row][col]
+
+                if ((row, col) not in self.revealed_tiles):                    
+                    self.revealed_tiles[(row, col)] = True
+
+                    if clicked_tile is ql.TileItems.BLANKS:                    
+                        return
+
+                    if clicked_tile not in self.revealed_groups_state:
+                        self.revealed_groups_state[clicked_tile] = 0
+                    self.revealed_groups_state[clicked_tile] += 1
 
     def handle_help_events(self):
         if pyxel.btnp(pyxel.KEY_LEFT_BUTTON):
@@ -137,18 +153,25 @@ class QuantumCatsweeperApp:
         for row in range(len(self.game_grid)):
             for col in range(len(self.game_grid[row])):
                 _x, _y = self.get_grid_xy_from_row_col(col, row)
-                
+
                 # TODO: Draw based on grid data
                 pyxel.rect(_x, _y, _x + self._grid_draw_size -
                            2, _y - 2 + self._grid_draw_size, 5)
-                pyxel.text(_x + 2, _y + 2, str(self.game_grid[row][col]), 3)
+
+                cur_tile = self.game_grid[row][col]
+
+                if self.revealed_groups_state.get(cur_tile, -1) >= abs(cur_tile.value) or \
+                    self.revealed_tiles.get((row, col), -1) == True:
+                    pyxel.text(_x + 2, _y + 2,
+                               str(abs(self.game_grid[row][col].value)), 3)
 
     def draw_playscreen(self):
         self.pyxel_button('Back', 5, 5)
 
         self.draw_grid()
 
-        pyxel.text(50, 8, 'SWEEP THE CATS!', 7)
+        # Top bar stuff
+        pyxel.text(50, 8, 'CATSWEEPER 9000', 7)
 
         # Convert text to "00:00" format
         display_mins = int(self.elapsed_frames / (60 * 30))  # 30 FPS
@@ -164,8 +187,10 @@ class QuantumCatsweeperApp:
     def draw_helpscreen(self):
         self.pyxel_text_centered(20, 'HELP', pyxel.frame_count % 16)
         # TODO: Information
-        self.pyxel_text_centered(30, 'Click on the tiles', 7)
-        self.pyxel_text_centered(40, 'Cat might explode', 7)
+        self.pyxel_text_centered(30, 'Don\'t explode the cats!', 7)
+        self.pyxel_text_centered(40, 'Numbers indicate number of', 7)
+        self.pyxel_text_centered(50, 'unearthed tiles needed to', 7)
+        self.pyxel_text_centered(50, 'reveal the group of numbers', 7)
         self.pyxel_button_centered('Back', 135)
 
     def draw_introscreen(self):
@@ -226,14 +251,8 @@ class QuantumCatsweeperApp:
 
     #### Game State ####
     def reset_game(self):
-        self.game_grid = [
-            [0 for x in range(self._grid_size)] for y in range(self._grid_size)]
-        self.game_grid[0][1] = 1
-        self.game_grid[7][1] = 5
-
         self.elapsed_frames = 0
-        self.revealed_groups = {}
+        self.revealed_groups_state = {}
+        self.revealed_tiles = {}
 
-        # TODO: Call quantum function
-        # self.game_grid = [[TileItems.BLANKS for x in range(
-        #     self._grid_size)] for y in range(self._grid_size)]
+        self.game_grid = ql.new_game_grid(self._grid_size, bomb_no=20)

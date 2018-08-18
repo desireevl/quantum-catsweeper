@@ -3,24 +3,22 @@ from enum import Enum
 from qcatsweeper import qconfig
 
 import math
-import qconfig
 import random
 import quantumrandom as qr
 
 
 class TileItems(Enum):
-    UNCLICKED = -2
-    CLICKED = -1
     BLANKS = 0
     GROUP1 = 1
-    GROUP2 = 2
-    GROUP3 = 3
-    GROUP4 = 4
-    GROUP5 = 5
-    GROUP6 = 6
+    GROUP2 = -1
+    GROUP3 = 2
+    GROUP4 = -2
+    GROUP5 = 3
+    GROUP6 = -3
     BOMB_UNEXPLODED = 7
     BOMB_EXPLODED = 8
     REVEAL_GROUP = 9
+
 
 real_device = False
 shots = 1024
@@ -33,7 +31,7 @@ Q_program = QuantumProgram()
 Q_program.set_api(qconfig.APItoken, qconfig.config["url"])
 q = Q_program.create_quantum_register("q", 5)
 c = Q_program.create_classical_register("c", 5)
-gridScript = Q_program.create_circuit("gridScript", [q], [c])   
+gridScript = Q_program.create_circuit("gridScript", [q], [c])
 
 _width = 12
 _height = 12
@@ -42,10 +40,26 @@ game = [[0 for x in range(_width)] for y in range(_height)]
 def new_game_grid(l, bomb_no=20):
     game_grid = [[TileItems.BLANKS for i in range(l)] for j in range(l)]
 
+    # Construct groups of numbers
+    _cur = 0
+    _index = [TileItems.GROUP1, TileItems.GROUP2, TileItems.GROUP3,
+              TileItems.GROUP4, TileItems.GROUP5, TileItems.GROUP6]
+    random.shuffle(_index)
+    _groups = [[random.randint(0, 1) for i in range(l)] for i in range(l)]
+    
+    for y in range(0, l, 4):
+        for x in range(0, l, 6):            
+            for _y in range(y, y+4):
+                for _x in range(x, x+6):                    
+                    if _groups[_y][_x] >= 1:
+                        game_grid[_y][_x] = _index[_cur]
+            _cur += 1
+
     # 20 bombs
-    bomb_xy = qr.get_data(data_type='uint16', array_length=bomb_no)
-    bomb_xy = list(map(lambda x: x % l, bomb_xy))
-    bomb_xy = [bomb_xy[i:i+2] for i in range(0, math.ceil(bomb_no/2), 2)]
+    # bomb_xy = qr.get_data(data_type='uint16', array_length=bomb_no * 2)
+    # bomb_xy = list(map(lambda x: x % l, bomb_xy))
+    bomb_xy = [random.randint(0, l-1) for i in range(bomb_no * 2)]
+    bomb_xy = [bomb_xy[i:i+2] for i in range(0, bomb_no * 2, 2)]
 
     for coord in bomb_xy:
         if len(coord) > 0:
@@ -63,7 +77,8 @@ def onclick(clicked_tile, num_clicks):
     if (clicked_tile == TileItems.BOMB):
         gridScript.h(q[0])
         gridScript.measure(q[0], c[0])
-        results = Q_program.execute(["gridScript"], backend=device, shots=shots, wait=5, timeout=1800)
+        results = Q_program.execute(
+            ["gridScript"], backend=device, shots=shots, wait=5, timeout=1800)
         re = results.get_counts("gridScript")
 
         d1 = list(map(lambda x: (x[0], x[1], x[0].count('0')), re.items()))
@@ -76,7 +91,8 @@ def onclick(clicked_tile, num_clicks):
     elif (clicked_tile == TileItems.GROUP1 and clicked_tile == TileItems.GROUP2): # 1 click
         gridScript.x(q[1])
         gridScript.measure(q[1], c[1])
-        results = Q_program.execute(["gridScript"], backend=device, shots=shots, wait=5, timeout=1800)
+        results = Q_program.execute(
+            ["gridScript"], backend=device, shots=shots, wait=5, timeout=1800)
         re = results.get_counts("gridScript")
 
         if len(re) > 1:
@@ -101,11 +117,11 @@ def onclick(clicked_tile, num_clicks):
     elif (clicked_tile == TileItems.GROUP5 and clicked_tile ==TileItems.GROUP6): # 3 clicks
         if num_clicks == 0:
             gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
-            return TileItems.CLICKED
+            return None
         elif num_clicks == 1:
             gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
             gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
-            return TileItems.CLICKED
+            return None
         elif num_clicks == 2:
             gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
             gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
