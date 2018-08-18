@@ -8,15 +8,13 @@ import quantumrandom as qr
 
 
 class TileItems(Enum):
-    UNCLICKED = -2
-    CLICKED = -1
     BLANKS = 0
     GROUP1 = 1
-    GROUP2 = 2
-    GROUP3 = 3
-    GROUP4 = 4
-    GROUP5 = 5
-    GROUP6 = 6
+    GROUP2 = -1
+    GROUP3 = 2
+    GROUP4 = -2
+    GROUP5 = 3
+    GROUP6 = -3
     BOMB_UNEXPLODED = 7
     BOMB_EXPLODED = 8
     REVEAL_GROUP = 9
@@ -70,7 +68,7 @@ def new_game_grid(l, bomb_no=20):
     return game_grid
 
 
-def onclick( clicked_tile, num_clicks):
+def onclick(clicked_tile, num_clicks):
     """
     params:
     clicked_tile: tile type of the clicked tile
@@ -119,11 +117,11 @@ def onclick( clicked_tile, num_clicks):
     elif (clicked_tile == TileItems.GROUP5 and clicked_tile ==TileItems.GROUP6): # 3 clicks
         if num_clicks == 0:
             gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
-            return TileItems.CLICKED
+            return None
         elif num_clicks == 1:
             gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
             gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
-            return TileItems.CLICKED
+            return None
         elif num_clicks == 2:
             gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
             gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
