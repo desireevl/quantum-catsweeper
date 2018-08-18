@@ -29,7 +29,7 @@ class QuantumCatsweeperApp:
         self._main_cat_asset = 0
 
         self._main_bg = 1
-        self._PLAYING_REAL_bg = 2
+        self._playing_bg = 2
         self._bomb_explode_sound = 3
 
         self._width = width
@@ -47,13 +47,12 @@ class QuantumCatsweeperApp:
         self.reveal_groups = {}
 
         self._play_real_button_pos = self.pyxel_button_centered(
-            'Play (Real)     ', 100)
-        self._play_simulated_button_pos = self.pyxel_button_centered(
-            'Play (Simulated)', 115)
+            'Play', 100)
         self._help_button_pos = self.pyxel_button_centered(
-            '      Help      ', 130)
+            'Help', 120)
         self._help_back_button_pos = self.pyxel_button_centered('Back', 135)
-        self._PLAYING_REAL_back_buttom_pos = self.pyxel_button('Back', 5, 5)
+        self._playing_real_back_button = self.pyxel_button('Back', 5, 5)
+        self._replay_button = self.pyxel_button_centered('Play Again', 80)
 
         pyxel.init(self._width, self._height, caption='Quantum Catsweeper')
 
@@ -64,7 +63,7 @@ class QuantumCatsweeperApp:
             'e2e2c2g1 g1g1c2e2 d2d2d2g2 g2g2rr'
             'c2c2a1e1 e1e1a1c2 b1b1b1e2 e2e2rr', 'p', '6',
             'vffn fnff vffs vfnn', 25)
-        pyxel.sound(self._PLAYING_REAL_bg).set(
+        pyxel.sound(self._playing_bg).set(
             'f0c1f0c1 g0d1g0d1 c1g1c1g1 a0e1a0e1'
             'f0c1f0c1 f0c1f0c1 g0d1g0d1 g0d1g0d1', 't', '7', 'n', 25)
         pyxel.play(self._main_bg, [0, 1], loop=True)
@@ -82,7 +81,10 @@ class QuantumCatsweeperApp:
             self.handle_help_events()
 
         elif self.game_state == GameState.PLAYING_REAL:
-            self.handle_PLAYING_REAL_events()
+            self.handle_playing_events()
+
+        elif self.game_state == GameState.LOST:
+            self.handle_lostgame_events()
 
     def draw(self):
         self.clear_assets()
@@ -96,18 +98,34 @@ class QuantumCatsweeperApp:
         elif self.game_state == GameState.PLAYING_REAL:
             self.draw_playscreen()
 
+        elif self.game_state == GameState.LOST:
+            self.draw_lostscreen()
+
     def clear_assets(self):
         pyxel.cls(self._main_cat_asset)
 
     #### Event handlers ####
 
-    def handle_PLAYING_REAL_events(self):
+    def handle_lostgame_events(self):
         if pyxel.btnp(pyxel.KEY_LEFT_BUTTON):
             mouse_within = partial(is_within, pyxel.mouse_x, pyxel.mouse_y)
 
-            if mouse_within(self._PLAYING_REAL_back_buttom_pos):
+            if mouse_within(self._playing_real_back_button):
                 self.game_state = GameState.INTRO
-                pyxel.stop(self._PLAYING_REAL_bg)
+                pyxel.stop(self._playing_bg)
+                pyxel.play(self._main_bg, [0, 1], loop=True)
+            
+            elif mouse_within(self._replay_button):
+                self.game_state = GameState.PLAYING_REAL
+                self.reset_game()
+
+    def handle_playing_events(self):
+        if pyxel.btnp(pyxel.KEY_LEFT_BUTTON):
+            mouse_within = partial(is_within, pyxel.mouse_x, pyxel.mouse_y)
+
+            if mouse_within(self._playing_real_back_button):
+                self.game_state = GameState.INTRO
+                pyxel.stop(self._playing_bg)
                 pyxel.play(self._main_bg, [0, 1], loop=True)
 
             # If user is clicking
@@ -117,10 +135,10 @@ class QuantumCatsweeperApp:
 
                 clicked_tile = self.game_grid[row][col]
 
-                if ((row, col) not in self.clicked_tiles):                    
+                if ((row, col) not in self.clicked_tiles):
                     self.clicked_tiles[(row, col)] = True
 
-                    if clicked_tile is ql.TileItems.BLANKS:                    
+                    if clicked_tile is ql.TileItems.BLANKS:
                         return
 
                     if clicked_tile not in self.clicked_group_times:
@@ -128,20 +146,20 @@ class QuantumCatsweeperApp:
                     self.clicked_group_times[clicked_tile] += 1
 
                     # Call quantum computer to see if we reveal of nah
-                    reveal_state = ql.onclick(clicked_tile, self.clicked_group_times[clicked_tile])
+                    reveal_state = ql.onclick(
+                        clicked_tile, self.clicked_group_times[clicked_tile])
 
                     if reveal_state is None:
                         return
-                    
+
                     if reveal_state is ql.TileItems.REVEAL_GROUP:
-                        print('reveal')
                         self.reveal_groups[clicked_tile] = ql.TileItems.REVEAL_GROUP
-                    
+
                     # TODO: What do when bomb explodes
                     if reveal_state is ql.TileItems.BOMB_EXPLODED:
-                        print('game loss')
-                        return
-                    
+                        self.game_grid[row][col] = ql.TileItems.BOMB_EXPLODED
+                        self.game_state = GameState.LOST
+
                     # When bomb doesn't explode it turns into blank
                     if reveal_state is ql.TileItems.BOMB_UNEXPLODED:
                         self.game_grid[row][col] = ql.TileItems.BLANKS
@@ -162,34 +180,86 @@ class QuantumCatsweeperApp:
                 self.game_state = GameState.PLAYING_REAL
 
                 pyxel.stop(self._main_bg)
-                pyxel.play(self._PLAYING_REAL_bg, [2, 3], loop=True)
+                pyxel.play(self._playing_bg, [2, 3], loop=True)
 
             if mouse_within(self._help_button_pos):
                 self.game_state = GameState.HELP
 
     #### Screen Drawing ####
 
+    def draw_lostscreen(self):
+        self.draw_grid()
+        self.pyxel_button('Back', 5, 5)
+        self.pyxel_button_centered('Play Again', 80)
+        pyxel.text(60, 8, 'GAMEOVER', 8)
+
     def draw_grid(self):
         for row in range(len(self.game_grid)):
             for col in range(len(self.game_grid[row])):
                 _x, _y = self.get_grid_xy_from_row_col(col, row)
-                
-                pyxel.rect(_x, _y, _x + self._grid_draw_size -
-                           2, _y - 2 + self._grid_draw_size, 5)
 
                 cur_tile = self.game_grid[row][col]
 
                 if self.clicked_tiles.get((row, col), -1) == True or \
-                    self.reveal_groups.get(cur_tile) == ql.TileItems.REVEAL_GROUP:
-                    pyxel.text(_x + 2, _y + 2,
-                               str(abs(self.game_grid[row][col].value)), 3)
+                        self.reveal_groups.get(cur_tile) == ql.TileItems.REVEAL_GROUP:
+
+                    if cur_tile is ql.TileItems.BLANKS:
+                        pyxel.rect(_x, _y, _x + self._grid_draw_size -
+                                   2, _y - 2 + self._grid_draw_size, 6)
+
+                    elif cur_tile is ql.TileItems.GROUP1:
+                        pyxel.rect(_x, _y, _x + self._grid_draw_size -
+                                   2, _y - 2 + self._grid_draw_size, 3)
+                        pyxel.text(_x + 2, _y + 2,
+                                   str(abs(self.game_grid[row][col].value)), 7)
+
+                    elif cur_tile is ql.TileItems.GROUP2:
+                        pyxel.rect(_x, _y, _x + self._grid_draw_size -
+                                   2, _y - 2 + self._grid_draw_size, 11)
+                        pyxel.text(_x + 2, _y + 2,
+                                   str(abs(self.game_grid[row][col].value)), 0)
+
+                    elif cur_tile is ql.TileItems.GROUP3:
+                        pyxel.rect(_x, _y, _x + self._grid_draw_size -
+                                   2, _y - 2 + self._grid_draw_size, 9)
+                        pyxel.text(_x + 2, _y + 2,
+                                   str(abs(self.game_grid[row][col].value)), 0)
+
+                    elif cur_tile is ql.TileItems.GROUP4:
+                        pyxel.rect(_x, _y, _x + self._grid_draw_size -
+                                   2, _y - 2 + self._grid_draw_size, 10)
+                        pyxel.text(_x + 2, _y + 2,
+                                   str(abs(self.game_grid[row][col].value)), 0)
+
+                    elif cur_tile is ql.TileItems.GROUP5:
+                        pyxel.rect(_x, _y, _x + self._grid_draw_size -
+                                   2, _y - 2 + self._grid_draw_size, 13)
+                        pyxel.text(_x + 2, _y + 2,
+                                   str(abs(self.game_grid[row][col].value)), 0)
+
+                    elif cur_tile is ql.TileItems.GROUP6:
+                        pyxel.rect(_x, _y, _x + self._grid_draw_size -
+                                   2, _y - 2 + self._grid_draw_size, 1)
+                        pyxel.text(_x + 2, _y + 2,
+                                   str(abs(self.game_grid[row][col].value)), 7)
+
+                    elif cur_tile is ql.TileItems.BOMB_EXPLODED:
+                        pyxel.rect(_x, _y, _x + self._grid_draw_size -
+                                   2, _y - 2 + self._grid_draw_size, 8)
+                        pyxel.text(_x + 2, _y + 2, 'x', 0)
+
+                    else:
+                        print(cur_tile)
+
+                else:
+                    pyxel.rect(_x, _y, _x + self._grid_draw_size -
+                               2, _y - 2 + self._grid_draw_size, 5)
 
     def draw_playscreen(self):
-        self.pyxel_button('Back', 5, 5)
-
         self.draw_grid()
 
         # Top bar stuff
+        self.pyxel_button('Back', 5, 5)
         pyxel.text(50, 8, 'CATSWEEPER 9000', 7)
 
         # Convert text to "00:00" format
@@ -205,11 +275,11 @@ class QuantumCatsweeperApp:
 
     def draw_helpscreen(self):
         self.pyxel_text_centered(20, 'HELP', pyxel.frame_count % 16)
-        # TODO: Information
+        # Information
         self.pyxel_text_centered(30, 'Don\'t explode the cats!', 7)
         self.pyxel_text_centered(40, 'Numbers indicate number of', 7)
         self.pyxel_text_centered(50, 'unearthed tiles needed to', 7)
-        self.pyxel_text_centered(50, 'reveal the group of numbers', 7)
+        self.pyxel_text_centered(60, 'reveal the group of numbers', 7)
         self.pyxel_button_centered('Back', 135)
 
     def draw_introscreen(self):
@@ -225,9 +295,8 @@ class QuantumCatsweeperApp:
                   0, 0, 16 * cat_flip, 16, 5)
 
         # Draw button
-        self.pyxel_button_centered('Play (Real)     ', 100)
-        self.pyxel_button_centered('Play (Simulated)', 115)
-        self.pyxel_button_centered('      Help      ', 130)
+        self.pyxel_button_centered('Play', 100)
+        self.pyxel_button_centered('Help', 120)
 
     #### Pyxel Function Wrappers ####
 
