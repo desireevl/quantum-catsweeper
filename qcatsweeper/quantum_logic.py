@@ -1,9 +1,7 @@
 from qiskit import QuantumProgram
-from collections import Counter
 from enum import Enum
 
 import math
-import operator
 import qconfig
 import random
 import quantumrandom as qr
@@ -20,16 +18,7 @@ class TileItems(Enum):
     GROUP6 = 6
     BOMB_UNEXPLODED = 7
     BOMB_EXPLODED = 8
-
-
-# if (x,y.tile == TileItems.BOMB)
-# print(int(round(qr.randint(0,20))))
-
-# print(x)
-# print(y)
-
-# x = [i for i in range(12)]
-# y = [i for i in range(12)]
+    REVEAL_GROUP = 9
 
 real_device = False
 shots = 1024
@@ -81,7 +70,7 @@ def new_game_grid(l, bomb_no=20):
     return game_grid
 
 
-def onclick(game, x_pos, y_pos, clicked_tile):
+def onclick(game, x_pos, y_pos, clicked_tile, qstate):
     """
     params:
     game: 2 dimensional list
@@ -102,18 +91,29 @@ def onclick(game, x_pos, y_pos, clicked_tile):
         else:
             return TileItems.BLANKS
 
-    # elif (clicked_tile == TileItems.BLANKS):
-        # game[x][y] == -3
-    # elif (game[x][y] == -2): # already clicked tiles
-    #     None
-    # elif (game[x][y] == 1): #1
-        # gridScript.u3(0.5 * math.pi, 0.5 * math.pi, 0.5 * math.pi, q[1])
+    elif (clicked_tile == (TileItems.GROUP1, TileItems.GROUP2)): # 1 click
+        gridScript.x(q[1])
+        gridScript.measure(q[1], c[1])
+        results = Q_program.execute(["gridScript"], backend=device, shots=shots, wait=5, timeout=1800)
+        re = results.get_counts("gridScript")
+
+        if len(re) > 1:
+            d1 = list(map(lambda x: (x[0], x[1], x[0].count('0')), re.items()))
+            d2 = sorted(d1, key=lambda x: x[2], reverse=True)
+            if d2[0][2] > d2[1][2]:
+                return TileItems.REVEAL_GROUP
+            else:
+                val = list(re.keys())[0]
+                if val.count('1') > val.count('0'):
+                    return TileItems.REVEAL_GROUP
+
+
+    # elif (clicked_tile == (TileItems.GROUP3, TileItems.GROUP4)): # 2 clicks
+    #     pass
+
+
+    # elif (clicked_tile == (TileItems.GROUP5, TileItems.GROUP6)): # 3 clicks
 
 
 
-
-    # results = Q_program.execute(["gridScript"], backend=device, shots=shots, wait=5, timeout=1800)
-
-        
-
-# onclick(game, 2, 3)
+        # gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[1])
