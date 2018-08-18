@@ -2,6 +2,7 @@ from qiskit import QuantumProgram
 from enum import Enum
 from qcatsweeper import qconfig
 
+import qiskit
 import math
 import random
 import quantumrandom as qr
@@ -28,7 +29,8 @@ if real_device:
     device = 'ibmqx4'
 
 Q_program = QuantumProgram()
-Q_program.set_api(qconfig.APItoken, qconfig.config["url"])
+# Q_program.set_api(qconfig.APItoken, qconfig.config["url"])
+qiskit.register(qconfig.APItoken, qconfig.config["url"])
 q = Q_program.create_quantum_register("q", 5)
 c = Q_program.create_classical_register("c", 5)
 gridScript = Q_program.create_circuit("gridScript", [q], [c])
