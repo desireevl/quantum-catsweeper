@@ -10,11 +10,11 @@ import quantumrandom as qr
 class TileItems(Enum):
     BLANKS = 0
     GROUP1 = 1
-    GROUP2 = 2
-    GROUP3 = 3
-    GROUP4 = 4
-    GROUP5 = 5
-    GROUP6 = 6
+    GROUP2 = -1
+    GROUP3 = 2
+    GROUP4 = -2
+    GROUP5 = 3
+    GROUP6 = -3
     BOMB_UNEXPLODED = 7
     BOMB_EXPLODED = 8
     REVEAL_GROUP = 9
