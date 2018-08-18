@@ -10,11 +10,11 @@ import quantumrandom as qr
 class TileItems(Enum):
     BLANKS = 0
     GROUP1 = 1
-    GROUP2 = -1
-    GROUP3 = 2
-    GROUP4 = -2
-    GROUP5 = 3
-    GROUP6 = -3
+    GROUP2 = 2
+    GROUP3 = 3
+    GROUP4 = 4
+    GROUP5 = 5
+    GROUP6 = 6
     BOMB_UNEXPLODED = 7
     BOMB_EXPLODED = 8
     REVEAL_GROUP = 9
@@ -74,11 +74,13 @@ def onclick(clicked_tile, num_clicks):
     clicked_tile: tile type of the clicked tile
     num_click: number of times a group has been clicked
     """
-    if (clicked_tile == TileItems.BOMB):
+    print(clicked_tile, num_clicks)
+
+    if (clicked_tile == TileItems.BOMB_UNEXPLODED):
         gridScript.h(q[0])
         gridScript.measure(q[0], c[0])
         results = Q_program.execute(
-            ["gridScript"], backend=device, shots=shots, wait=5, timeout=1800)
+            ["gridScript"], backend=device, shots=shots, timeout=1800)
         re = results.get_counts("gridScript")
 
         d1 = list(map(lambda x: (x[0], x[1], x[0].count('0')), re.items()))
@@ -88,41 +90,42 @@ def onclick(clicked_tile, num_clicks):
         else:
             return TileItems.BLANKS
 
-    elif (clicked_tile == TileItems.GROUP1 and clicked_tile == TileItems.GROUP2): # 1 click
+    elif (clicked_tile == TileItems.GROUP1 or clicked_tile == TileItems.GROUP2): # 1 click
         gridScript.x(q[1])
         gridScript.measure(q[1], c[1])
         results = Q_program.execute(
-            ["gridScript"], backend=device, shots=shots, wait=5, timeout=1800)
+            ["gridScript"], backend=device, shots=shots, timeout=1800)
         re = results.get_counts("gridScript")
 
+        # is occurence for '00000' > '00001' or the other way
         if len(re) > 1:
             d1 = list(map(lambda x: (x[0], x[1], x[0].count('0')), re.items()))
-            d2 = sorted(d1, key=lambda x: x[2], reverse=True)
+            d2 = sorted(d1, key=lambda x: x[2], reverse=True)            
             if d2[0][2] > d2[1][2]:
                 return TileItems.REVEAL_GROUP
-            else:
-                val = list(re.keys())[0]
-                if val.count('1') > val.count('0'):
-                    return TileItems.REVEAL_GROUP
-
-    elif (clicked_tile == TileItems.GROUP3 and clicked_tile == TileItems.GROUP4): # 2 clicks
-        if num_clicks == 0:
+            val = list(re.keys())[0]
+            if val.count('1') > val.count('0'):
+                return TileItems.REVEAL_GROUP
+            return None
+                
+    elif (clicked_tile == TileItems.GROUP3 or clicked_tile == TileItems.GROUP4): # 2 clicks
+        if num_clicks == 1:
             gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[2])
-            return TileItems.CLICKED
-        elif num_clicks == 1:
+            return None
+        elif num_clicks == 2:
                 gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[2])
                 gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[2])
                 return TileItems.REVEAL_GROUP
 
-    elif (clicked_tile == TileItems.GROUP5 and clicked_tile ==TileItems.GROUP6): # 3 clicks
-        if num_clicks == 0:
-            gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
-            return None
-        elif num_clicks == 1:
-            gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
+    elif (clicked_tile == TileItems.GROUP5 or clicked_tile ==TileItems.GROUP6): # 3 clicks
+        if num_clicks == 1:
             gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
             return None
         elif num_clicks == 2:
+            gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
+            gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
+            return None
+        elif num_clicks == 3:
             gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
             gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])
             gridScript.u3(1/3 * math.pi, 0.0, 0.0, q[3])

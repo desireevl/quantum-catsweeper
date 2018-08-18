@@ -42,8 +42,9 @@ class QuantumCatsweeperApp:
 
         self.game_grid = []
         self.elapsed_frames = 0
-        self.revealed_tiles = {}
-        self.revealed_groups_state = {}
+        self.clicked_tiles = {}
+        self.clicked_group_times = {}
+        self.reveal_groups = {}
 
         self._play_real_button_pos = self.pyxel_button_centered(
             'Play (Real)     ', 100)
@@ -116,15 +117,34 @@ class QuantumCatsweeperApp:
 
                 clicked_tile = self.game_grid[row][col]
 
-                if ((row, col) not in self.revealed_tiles):                    
-                    self.revealed_tiles[(row, col)] = True
+                if ((row, col) not in self.clicked_tiles):                    
+                    self.clicked_tiles[(row, col)] = True
 
                     if clicked_tile is ql.TileItems.BLANKS:                    
                         return
 
-                    if clicked_tile not in self.revealed_groups_state:
-                        self.revealed_groups_state[clicked_tile] = 0
-                    self.revealed_groups_state[clicked_tile] += 1
+                    if clicked_tile not in self.clicked_group_times:
+                        self.clicked_group_times[clicked_tile] = 0
+                    self.clicked_group_times[clicked_tile] += 1
+
+                    # Call quantum computer to see if we reveal of nah
+                    reveal_state = ql.onclick(clicked_tile, self.clicked_group_times[clicked_tile])
+
+                    if reveal_state is None:
+                        return
+                    
+                    if reveal_state is ql.TileItems.REVEAL_GROUP:
+                        print('reveal')
+                        self.reveal_groups[clicked_tile] = ql.TileItems.REVEAL_GROUP
+                    
+                    # TODO: What do when bomb explodes
+                    if reveal_state is ql.TileItems.BOMB_EXPLODED:
+                        print('game loss')
+                        return
+                    
+                    # When bomb doesn't explode it turns into blank
+                    if reveal_state is ql.TileItems.BOMB_UNEXPLODED:
+                        self.game_grid[row][col] = ql.TileItems.BLANKS
 
     def handle_help_events(self):
         if pyxel.btnp(pyxel.KEY_LEFT_BUTTON):
@@ -153,15 +173,14 @@ class QuantumCatsweeperApp:
         for row in range(len(self.game_grid)):
             for col in range(len(self.game_grid[row])):
                 _x, _y = self.get_grid_xy_from_row_col(col, row)
-
-                # TODO: Draw based on grid data
+                
                 pyxel.rect(_x, _y, _x + self._grid_draw_size -
                            2, _y - 2 + self._grid_draw_size, 5)
 
                 cur_tile = self.game_grid[row][col]
 
-                if self.revealed_groups_state.get(cur_tile, -1) >= abs(cur_tile.value) or \
-                    self.revealed_tiles.get((row, col), -1) == True:
+                if self.clicked_tiles.get((row, col), -1) == True or \
+                    self.reveal_groups.get(cur_tile) == ql.TileItems.REVEAL_GROUP:
                     pyxel.text(_x + 2, _y + 2,
                                str(abs(self.game_grid[row][col].value)), 3)
 
@@ -252,7 +271,8 @@ class QuantumCatsweeperApp:
     #### Game State ####
     def reset_game(self):
         self.elapsed_frames = 0
-        self.revealed_groups_state = {}
-        self.revealed_tiles = {}
+        self.clicked_group_times = {}
+        self.clicked_tiles = {}
+        self.reveal_groups = {}
 
         self.game_grid = ql.new_game_grid(self._grid_size, bomb_no=20)
