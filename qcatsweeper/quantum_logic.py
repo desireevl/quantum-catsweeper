@@ -54,7 +54,7 @@ def new_game_grid(l, bomb_no=20):
     return game_grid
 
 
-def onclick( clicked_tile, num_clicks):
+def onclick(clicked_tile, num_clicks):
     """
     params:
     clicked_tile: tile type of the clicked tile
