@@ -67,21 +67,19 @@ x_neg = random.randint(1,3)
 for row in game:
     print(row)
 
-gridScript.h(q[0])
-gridScript.measure(q[0], c[0])
-results = Q_program.execute(["gridScript"], backend=device, shots=shots, wait=5, timeout=1800)
-re = results.get_counts("gridScript")   
 
-print(re)
+def new_game_grid(l):
+    game_grid = [[TileItems.BLANKS for i in range(l)] for j in range(l)]
 
-d1 = list(map(lambda x: (x[0], x[1], x[0].count('0')), re.items()))
-d2 = sorted(d1, key=lambda x: x[2], reverse=True)
-if d2[0][2] > d2[1][2]:
-    result = 1
-else:
-    result = 0
+    # 20 bombs
+    bomb_xy = qr.get_data(data_type='uint16', array_length=20)
+    bomb_xy = list(map(lambda x: x % l, bomb_xy))
+    bomb_xy = [bomb_xy[i:i+2] for i in range(0, l, 2)]
 
-print(result)
+    for coord in bomb_xy:
+        game_grid[coord[0]][coord[1]] = TileItems.BOMB_UNEXPLODED
+
+    return game_grid
 
 
 def onclick(game, x_pos, y_pos, clicked_tile):
@@ -104,7 +102,8 @@ def onclick(game, x_pos, y_pos, clicked_tile):
             return TileItems.BOMB_EXPLODED
         else:
             return TileItems.BLANKS
-    elif (clicked_tile == TileItems.)
+
+    # elif (clicked_tile == TileItems.BLANKS):
         # game[x][y] == -3
     # elif (game[x][y] == -2): # already clicked tiles
     #     None
