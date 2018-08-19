@@ -8,3 +8,12 @@ This is a game loosely based from Minesweeper Flags and utilises the IBM Quantum
 - If a tile has an ! at the end that means quantum probability was not in your favour and that tile click does not count
 - To win the game, find the golden kitty (who moves based on whether you reveal a ! or normal tile)
 
+# Installation Guide
+```bash
+apt-get install python3 python3-pip libglfw3 libportaudio2 libasound-dev
+
+pip install -r requirements.txt
+
+python main.py
+python main.py debug # For debugging mode
+```
