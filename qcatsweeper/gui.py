@@ -47,6 +47,8 @@ class QuantumCatsweeperApp:
         self.clicked_tiles = {}
         self.clicked_group_times = {}
         self.reveal_groups = {}
+        self.golden_cat_x = -1
+        self.golden_cat_y = -1
 
         self._play_real_button_pos = self.pyxel_button_centered(
             'Play', 100)
@@ -136,9 +138,12 @@ class QuantumCatsweeperApp:
                 row, col = self.get_grid_row_col_from_xy(
                     pyxel.mouse_x, pyxel.mouse_y)
 
+                if row < 0 or row >= self._grid_size or col < 0 or col >= self._grid_size:
+                    return
+
                 clicked_tile = self.game_grid[row][col]
 
-                if ((row, col) not in self.clicked_tiles):
+                if ((row, col) not in self.clicked_tiles) and clicked_tile not in self.reveal_groups:
                     self.clicked_tiles[(row, col)] = True
 
                     if clicked_tile is ql.TileItems.BLANKS:
@@ -152,6 +157,33 @@ class QuantumCatsweeperApp:
                         clicked_tile, self.clicked_group_times[clicked_tile]
                     )
 
+                    # Move golden cat away from item
+                    if reveal_state is ql.TileItems.NEG_EVAL:
+                        offset_x = -1 if self.golden_cat_x < col else 1
+                        offset_x = 0 if self.golden_cat_x == col else offset_x
+
+                        offset_y = -1 if self.golden_cat_y < row else 1
+                        offset_y = 0 if self.golden_cat_y == row else offset_y
+
+                        # Move cat if the destination position is not clicked
+                        if not self.swap_golden_cat_with(self.golden_cat_x + offset_x, self.golden_cat_y):
+                            self.swap_golden_cat_with(self.golden_cat_x, self.golden_cat_y + offset_y)
+
+                    if reveal_state is ql.TileItems.POS_EVAL or \
+                        reveal_state is ql.TileItems.REVEAL_GROUP or \
+                        reveal_state is ql.TileItems.BOMB_DEFUSED:
+                        # TODO: Move golden cat towards item
+                        offset_x = 1 if self.golden_cat_x < col else -1
+                        offset_x = 0 if self.golden_cat_x == col else offset_x
+
+                        offset_y = 1 if self.golden_cat_y < row else -1
+                        offset_y = 0 if self.golden_cat_y == row else offset_y
+
+                        # Move cat if the destination position is not clicked
+                        if not self.swap_golden_cat_with(self.golden_cat_x + offset_x, self.golden_cat_y):
+                            self.swap_golden_cat_with(self.golden_cat_x, self.golden_cat_y + offset_y)
+
+
                     if reveal_state is None or reveal_state is ql.TileItems.NEG_EVAL:
                         self.game_grid_evaled[(row, col)] = str(
                             abs(clicked_tile.value)) + '!'
@@ -163,13 +195,13 @@ class QuantumCatsweeperApp:
                     if reveal_state is ql.TileItems.REVEAL_GROUP:
                         self.reveal_groups[clicked_tile] = ql.TileItems.REVEAL_GROUP
 
-                    if reveal_state is ql.TileItems.BOMB_EXPLODED:
-                        self.game_grid[row][col] = ql.TileItems.BOMB_EXPLODED
-                        self.game_state = GameState.LOST
-
                     # When bomb doesn't explode it turns into blank
                     if reveal_state is ql.TileItems.BOMB_DEFUSED:
                         self.game_grid[row][col] = ql.TileItems.BOMB_DEFUSED
+
+                    if reveal_state is ql.TileItems.BOMB_EXPLODED:
+                        self.game_grid[row][col] = ql.TileItems.BOMB_EXPLODED
+                        self.game_state = GameState.LOST
 
     def handle_help_events(self):
         if pyxel.btnp(pyxel.KEY_LEFT_BUTTON):
@@ -252,6 +284,12 @@ class QuantumCatsweeperApp:
                                    2, _y - 2 + self._grid_draw_size, 1)
                         pyxel.text(_x + 2, _y + 2, display_tile_text, 7)
 
+                    # Golden Cat
+                    elif cur_tile is ql.TileItems.GOLDEN_CAT:
+                        pyxel.rect(_x, _y, _x + self._grid_draw_size -
+                                   2, _y - 2 + self._grid_draw_size, 1)
+                        pyxel.text(_x + 2, _y + 2, 'G', 12)
+
                     # Bomb defused
                     elif cur_tile is ql.TileItems.BOMB_DEFUSED:
                         pyxel.blt(_x, _y, self._main_cat_asset,
@@ -263,8 +301,15 @@ class QuantumCatsweeperApp:
                                   0, 0, self._grid_draw_size - 1, -self._grid_draw_size + 1, 8)                        
 
                 else:
-                    pyxel.rect(_x, _y, _x + self._grid_draw_size -
-                               2, _y - 2 + self._grid_draw_size, 5)
+                    # Golden Cat (debug)
+                    if cur_tile is ql.TileItems.GOLDEN_CAT:
+                        pyxel.rect(_x, _y, _x + self._grid_draw_size -
+                                   2, _y - 2 + self._grid_draw_size, 1)
+                        pyxel.text(_x + 2, _y + 2, 'G', 12)
+
+                    else:
+                        pyxel.rect(_x, _y, _x + self._grid_draw_size -
+                                2, _y - 2 + self._grid_draw_size, 5)
 
     def draw_playscreen(self):
         self.draw_grid()
@@ -349,6 +394,22 @@ class QuantumCatsweeperApp:
         return int(row), int(col)
 
     #### Game State ####
+    def swap_golden_cat_with(self, x, y):
+        if x == self.golden_cat_x and y == self.golden_cat_y:
+            return False
+            
+        if x >= 0 and x < self._grid_size and y >= 0 and y < self._grid_size:
+            if (y, x) not in self.clicked_tiles:
+                if self.game_grid[y][x] not in self.reveal_groups:
+                    _tmp = self.game_grid[y][x]
+                    self.game_grid[y][x] = ql.TileItems.GOLDEN_CAT
+                    self.game_grid[self.golden_cat_y][self.golden_cat_x] = _tmp
+
+                    self.golden_cat_x = x
+                    self.golden_cat_y = y
+                    return True
+        return False
+    
     def reset_game(self):
         self.elapsed_frames = 0
         self.clicked_group_times = {}
@@ -357,3 +418,10 @@ class QuantumCatsweeperApp:
 
         self.game_grid_evaled = {}
         self.game_grid = ql.new_game_grid(self._grid_size, bomb_no=20)
+
+        for r in range(self._grid_size):
+            for c in range(self._grid_size):
+                if self.game_grid[r][c] == ql.TileItems.GOLDEN_CAT:
+                    self.golden_cat_x = c
+                    self.golden_cat_y = r
+                    break

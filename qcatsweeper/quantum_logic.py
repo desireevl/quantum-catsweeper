@@ -10,17 +10,24 @@ import quantumrandom as qr
 
 class TileItems(Enum):
     BLANKS = 0
+
     GROUP1 = 1
     GROUP2 = -1
     GROUP3 = 2
     GROUP4 = -2
     GROUP5 = 3
-    GROUP6 = -3
+    GROUP6 = -3    
+
     BOMB_UNEXPLODED = 7
     BOMB_EXPLODED = 8    
+
     REVEAL_GROUP = 9
+
+    GOLDEN_CAT = 10
+
     POS_EVAL = 42
     NEG_EVAL = -42
+
     BOMB_DEFUSED = 84
 
 
@@ -77,6 +84,9 @@ def new_game_grid(l, bomb_no=20):
     for coord in bomb_xy:
         if len(coord) > 0:
             game_grid[coord[0]][coord[1]] = TileItems.BOMB_UNEXPLODED
+
+    # Golden Cat
+    game_grid[random.randint(0, l-1)][random.randint(0, l-1)] = TileItems.GOLDEN_CAT
 
     return game_grid
 
