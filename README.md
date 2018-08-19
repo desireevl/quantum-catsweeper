@@ -8,6 +8,15 @@ This is a game loosely based from Minesweeper Flags and utilises the IBM Quantum
 - If a tile has an ! at the end that means quantum probability was not in your favour and that tile click does not count
 - To win the game, find the golden kitty (who moves based on whether you reveal a ! or normal tile)
 
+![Front Screen](https://github.com/desireevl/quantum-catsweeper/blob/master/images/mainscreen.PNG)
+
+## Game Page
+![Game Screen](https://github.com/desireevl/quantum-catsweeper/blob/master/images/playin.PNG)
+
+## Game Over
+![Game Over](https://github.com/desireevl/quantum-catsweeper/blob/master/images/lost.png)
+
+
 # Installation Guide
 ```bash
 apt-get install python3 python3-pip libglfw3 libportaudio2 libasound-dev
