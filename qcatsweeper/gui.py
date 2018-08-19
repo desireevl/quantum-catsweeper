@@ -13,7 +13,7 @@ class GameState(Enum):
     PLAYING_REAL = 2
     PLAYING_SIMULATED = 3
     LOST = 4
-    COMPUTING = 42
+    WON = 5
 
 
 def is_within(x, y, pos):
@@ -22,16 +22,19 @@ def is_within(x, y, pos):
 
 
 class QuantumCatsweeperApp:
-    def __init__(self, width=153, height=170):
+    def __init__(self, width=153, height=170, debugging=False):
         # Initialize game state
         self.game_state = GameState.INTRO
 
+        self.debugging = debugging
+
         self._main_cat_asset = 0
-        self._mini_cat_asset = 1
+        self._exploding_cat_asset = 1
+        self._golden_cat_asset = 2
 
         self._main_bg = 1
         self._playing_bg = 2
-        self._bomb_explode_sound = 3
+        self._losing_bg = 3
 
         self._width = width
         self._height = height
@@ -57,11 +60,16 @@ class QuantumCatsweeperApp:
         self._help_back_button_pos = self.pyxel_button_centered('Back', 135)
         self._playing_real_back_button = self.pyxel_button('Back', 5, 5)
         self._replay_button = self.pyxel_button_centered('Play Again', 80)
+        self._won_playagain_button = self.pyxel_button_centered(
+            'Play Again', 100)
 
         pyxel.init(self._width, self._height, caption='Quantum Catsweeper')
 
         pyxel.image(self._main_cat_asset).load(0, 0, 'assets/cat_16x16.png')
-        # pyxel.image(self._mini_cat_asset).load(0, 0, 'assets/cat_8x8.png')
+        pyxel.image(self._exploding_cat_asset).load(
+            0, 0, 'assets/explo_cat_31x25.png')
+        pyxel.image(self._golden_cat_asset).load(
+            0, 0, 'assets/golden_cat_16x16.png')
 
         # Sound
         pyxel.sound(self._main_bg).set(
@@ -71,6 +79,10 @@ class QuantumCatsweeperApp:
         pyxel.sound(self._playing_bg).set(
             'f0c1f0c1 g0d1g0d1 c1g1c1g1 a0e1a0e1'
             'f0c1f0c1 f0c1f0c1 g0d1g0d1 g0d1g0d1', 't', '7', 'n', 25)
+        pyxel.sound(self._losing_bg).set(
+            'c1g1c1g1 c1g1c1g1 b0g1b0g1 b0g1b0g1'
+            'a0e1a0e1 a0e1a0e1 g0d1g0d1 g0d1g0d1', 't', '7', 'n', 25)
+
         pyxel.play(self._main_bg, [0, 1], loop=True)
 
         pyxel.run(self.update, self.draw)
@@ -91,6 +103,9 @@ class QuantumCatsweeperApp:
         elif self.game_state == GameState.LOST:
             self.handle_lostgame_events()
 
+        elif self.game_state == GameState.WON:
+            self.handle_wongame_events()
+
     def draw(self):
         self.clear_assets()
 
@@ -106,10 +121,26 @@ class QuantumCatsweeperApp:
         elif self.game_state == GameState.LOST:
             self.draw_lostscreen()
 
+        elif self.game_state == GameState.WON:
+            self.draw_winscreen()
+
     def clear_assets(self):
         pyxel.cls(self._main_cat_asset)
 
     #### Event handlers ####
+
+    def handle_wongame_events(self):
+        if pyxel.btnp(pyxel.KEY_LEFT_BUTTON):
+            mouse_within = partial(is_within, pyxel.mouse_x, pyxel.mouse_y)
+
+            if mouse_within(self._won_playagain_button):
+                self.game_state = GameState.PLAYING_REAL
+                self.reset_game()
+                pyxel.stop(self._main_bg)
+                pyxel.play(self._playing_bg, [2, 3], loop=True)
+
+            if mouse_within(self._playing_real_back_button):
+                self.game_state = GameState.INTRO
 
     def handle_lostgame_events(self):
         if pyxel.btnp(pyxel.KEY_LEFT_BUTTON):
@@ -117,12 +148,14 @@ class QuantumCatsweeperApp:
 
             if mouse_within(self._playing_real_back_button):
                 self.game_state = GameState.INTRO
-                pyxel.stop(self._playing_bg)
+                pyxel.stop(self._losing_bg)
                 pyxel.play(self._main_bg, [0, 1], loop=True)
 
             elif mouse_within(self._replay_button):
                 self.game_state = GameState.PLAYING_REAL
                 self.reset_game()
+                pyxel.stop(self._losing_bg)
+                pyxel.play(self._playing_bg, [2, 3], loop=True)
 
     def handle_playing_events(self):
         if pyxel.btnp(pyxel.KEY_LEFT_BUTTON):
@@ -149,6 +182,11 @@ class QuantumCatsweeperApp:
                     if clicked_tile is ql.TileItems.BLANKS:
                         return
 
+                    if clicked_tile is ql.TileItems.GOLDEN_CAT:
+                        self.game_state = GameState.WON
+                        pyxel.stop(self._playing_bg)
+                        pyxel.play(self._main_bg, [0, 1], loop=True)
+
                     if clicked_tile not in self.clicked_group_times:
                         self.clicked_group_times[clicked_tile] = 1
 
@@ -167,11 +205,12 @@ class QuantumCatsweeperApp:
 
                         # Move cat if the destination position is not clicked
                         if not self.swap_golden_cat_with(self.golden_cat_x + offset_x, self.golden_cat_y):
-                            self.swap_golden_cat_with(self.golden_cat_x, self.golden_cat_y + offset_y)
+                            self.swap_golden_cat_with(
+                                self.golden_cat_x, self.golden_cat_y + offset_y)
 
                     if reveal_state is ql.TileItems.POS_EVAL or \
-                        reveal_state is ql.TileItems.REVEAL_GROUP or \
-                        reveal_state is ql.TileItems.BOMB_DEFUSED:
+                            reveal_state is ql.TileItems.REVEAL_GROUP or \
+                            reveal_state is ql.TileItems.BOMB_DEFUSED:
                         # TODO: Move golden cat towards item
                         offset_x = 1 if self.golden_cat_x < col else -1
                         offset_x = 0 if self.golden_cat_x == col else offset_x
@@ -181,8 +220,8 @@ class QuantumCatsweeperApp:
 
                         # Move cat if the destination position is not clicked
                         if not self.swap_golden_cat_with(self.golden_cat_x + offset_x, self.golden_cat_y):
-                            self.swap_golden_cat_with(self.golden_cat_x, self.golden_cat_y + offset_y)
-
+                            self.swap_golden_cat_with(
+                                self.golden_cat_x, self.golden_cat_y + offset_y)
 
                     if reveal_state is None or reveal_state is ql.TileItems.NEG_EVAL:
                         self.game_grid_evaled[(row, col)] = str(
@@ -202,6 +241,8 @@ class QuantumCatsweeperApp:
                     if reveal_state is ql.TileItems.BOMB_EXPLODED:
                         self.game_grid[row][col] = ql.TileItems.BOMB_EXPLODED
                         self.game_state = GameState.LOST
+                        pyxel.stop(self._playing_bg)
+                        pyxel.play(self._losing_bg, 4, loop=True)
 
     def handle_help_events(self):
         if pyxel.btnp(pyxel.KEY_LEFT_BUTTON):
@@ -226,10 +267,18 @@ class QuantumCatsweeperApp:
 
     #### Screen Drawing ####
 
+    def draw_winscreen(self):
+        self.draw_grid()
+        self.pyxel_button('Back', 5, 5)
+        self.pyxel_text_centered(80, 'CONGRATULATIONS', 3)
+        self.pyxel_text_centered(90, 'YOU WON!', 3)
+        self.pyxel_button_centered('Play Again', 100)
+
     def draw_lostscreen(self):
         self.draw_grid()
         self.pyxel_button('Back', 5, 5)
         self.pyxel_button_centered('Play Again', 80)
+        pyxel.blt(60, 52, self._exploding_cat_asset, 0, 0, 31, 25, 8)
         pyxel.text(60, 8, 'GAMEOVER', 8)
 
     def draw_grid(self):
@@ -286,30 +335,29 @@ class QuantumCatsweeperApp:
 
                     # Golden Cat
                     elif cur_tile is ql.TileItems.GOLDEN_CAT:
-                        pyxel.rect(_x, _y, _x + self._grid_draw_size -
-                                   2, _y - 2 + self._grid_draw_size, 1)
-                        pyxel.text(_x + 2, _y + 2, 'G', 12)
+                        pyxel.blt(_x, _y, self._golden_cat_asset,
+                                  0, 0, self._grid_draw_size - 1, self._grid_draw_size - 1, 4)
 
                     # Bomb defused
                     elif cur_tile is ql.TileItems.BOMB_DEFUSED:
                         pyxel.blt(_x, _y, self._main_cat_asset,
-                                  0, 0, self._grid_draw_size - 1, self._grid_draw_size - 1, 4)                        
+                                  0, 0, self._grid_draw_size - 1, self._grid_draw_size - 1, 4)
 
                     # Bomb exploded
                     elif cur_tile is ql.TileItems.BOMB_EXPLODED:
                         pyxel.blt(_x, _y, self._main_cat_asset,
-                                  0, 0, self._grid_draw_size - 1, -self._grid_draw_size + 1, 8)                        
+                                  0, 0, self._grid_draw_size - 1, -1 * (self._grid_draw_size - 1), 8)
 
                 else:
                     # Golden Cat (debug)
-                    if cur_tile is ql.TileItems.GOLDEN_CAT:
+                    if cur_tile is ql.TileItems.GOLDEN_CAT and self.debugging:
                         pyxel.rect(_x, _y, _x + self._grid_draw_size -
                                    2, _y - 2 + self._grid_draw_size, 1)
                         pyxel.text(_x + 2, _y + 2, 'G', 12)
 
                     else:
                         pyxel.rect(_x, _y, _x + self._grid_draw_size -
-                                2, _y - 2 + self._grid_draw_size, 5)
+                                   2, _y - 2 + self._grid_draw_size, 5)
 
     def draw_playscreen(self):
         self.draw_grid()
@@ -397,7 +445,7 @@ class QuantumCatsweeperApp:
     def swap_golden_cat_with(self, x, y):
         if x == self.golden_cat_x and y == self.golden_cat_y:
             return False
-            
+
         if x >= 0 and x < self._grid_size and y >= 0 and y < self._grid_size:
             if (y, x) not in self.clicked_tiles:
                 if self.game_grid[y][x] not in self.reveal_groups:
@@ -409,7 +457,7 @@ class QuantumCatsweeperApp:
                     self.golden_cat_y = y
                     return True
         return False
-    
+
     def reset_game(self):
         self.elapsed_frames = 0
         self.clicked_group_times = {}
