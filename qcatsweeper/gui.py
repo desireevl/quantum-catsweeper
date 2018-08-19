@@ -270,8 +270,8 @@ class QuantumCatsweeperApp:
     def draw_winscreen(self):
         self.draw_grid()
         self.pyxel_button('Back', 5, 5)
-        self.pyxel_text_centered(80, 'CONGRATULATIONS', 3)
-        self.pyxel_text_centered(90, 'YOU WON!', 3)
+        self.pyxel_text_centered(8, '       CONGRATULATIONS YOU WON', 3)
+        # self.pyxel_text_centered(0, 'YOU WON!', 3)
         self.pyxel_button_centered('Play Again', 100)
 
     def draw_lostscreen(self):
@@ -380,10 +380,13 @@ class QuantumCatsweeperApp:
     def draw_helpscreen(self):
         self.pyxel_text_centered(20, 'HELP', pyxel.frame_count % 16)
         # Information
-        self.pyxel_text_centered(30, 'Don\'t explode the cats!', 7)
-        self.pyxel_text_centered(40, 'Numbers indicate number of', 7)
-        self.pyxel_text_centered(50, 'unearthed tiles needed to', 7)
-        self.pyxel_text_centered(60, 'reveal the group of numbers', 7)
+        self.pyxel_text_centered(40, 'Don\'t explode the cats!', 7)
+        self.pyxel_text_centered(50, 'Numbers indicate number of', 7)
+        self.pyxel_text_centered(60, 'tiles needed to reveal', 7)
+        self.pyxel_text_centered(70, 'the whole group. If there is', 7)
+        self.pyxel_text_centered(80, 'a ! then your click doesn\'t', 7)
+        self.pyxel_text_centered(90, 'count. Find the golden cat', 7)
+        self.pyxel_text_centered(100, 'to win!', 7)
         self.pyxel_button_centered('Back', 135)
 
     def draw_introscreen(self):
