@@ -76,10 +76,11 @@ def new_game_grid(l, bomb_no=20):
                         game_grid[_y][_x] = _index[_cur]
             _cur += 1
 
-    # 20 bombs
-    # bomb_xy = qr.get_data(data_type='uint16', array_length=bomb_no * 2)
-    # bomb_xy = list(map(lambda x: x % l, bomb_xy))
-    bomb_xy = [random.randint(0, l-1) for i in range(bomb_no * 2)]
+    # ANU quantum random number generator to generate 20 bomb positions
+    bomb_xy = qr.get_data(data_type='uint16', array_length=bomb_no * 2)
+    bomb_xy = list(map(lambda x: x % l, bomb_xy))
+    # classical random number generator for debugging
+    # bomb_xy = [random.randint(0, l-1) for i in range(bomb_no * 2)]
     bomb_xy = [bomb_xy[i:i+2] for i in range(0, bomb_no * 2, 2)]
 
     for coord in bomb_xy:
