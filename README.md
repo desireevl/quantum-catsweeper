@@ -1,6 +1,6 @@
 # Quantum Cat-sweeper
 
-This is a game loosely based from Minesweeper Flags and utilises the IBM Quantum computer or simulator. 
+This is a game loosely based from Minesweeper Flags and runs on the [IBM Quantum computer](https://quantumexperience.ng.bluemix.net/qx/experience) or simulator. 
 
 # Rules of the game:
 - Don't explode the cat (bombs)
