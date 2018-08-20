@@ -44,6 +44,7 @@ qiskit.register(qconfig.APItoken, qconfig.config["url"])
 
 def get_one_or_zero(grid_script, q, c, index):
     global Q_program
+    # measuring qubit and finding which value has the most outcomes
     grid_script.measure(q[index], c[index])
     results = Q_program.execute(
         ["gridScript"], backend=device, shots=shots, timeout=1800)
@@ -60,7 +61,7 @@ def get_one_or_zero(grid_script, q, c, index):
 def new_game_grid(l, bomb_no=20):
     game_grid = [[TileItems.BLANKS for i in range(l)] for j in range(l)]
 
-    # Construct groups of numbers
+    # construct groups of numbers for tiles
     _cur = 0
     _index = [TileItems.GROUP1, TileItems.GROUP2, TileItems.GROUP3,
               TileItems.GROUP4, TileItems.GROUP5, TileItems.GROUP6]
@@ -85,7 +86,7 @@ def new_game_grid(l, bomb_no=20):
         if len(coord) > 0:
             game_grid[coord[0]][coord[1]] = TileItems.BOMB_UNEXPLODED
 
-    # Golden Cat
+    # golden Cat
     game_grid[random.randint(0, l-1)][random.randint(0, l-1)] = TileItems.GOLDEN_CAT
 
     return game_grid
@@ -102,16 +103,19 @@ def onclick(clicked_tile, num_clicks):
     gridScript = Q_program.create_circuit("gridScript", [q], [c])
 
     if (clicked_tile == TileItems.BOMB_UNEXPLODED):
+        # hadamard gate applied to bomb qubit
         gridScript.h(q[0])
-
+        
+        # if there are more 1 hits then the bomb expodes and the game is lost
         if get_one_or_zero(gridScript, q, c, 0) == 1:
             return TileItems.BOMB_EXPLODED
         return TileItems.BOMB_DEFUSED
 
-    elif (clicked_tile == TileItems.GROUP1 or clicked_tile == TileItems.GROUP2):  # 1 click        
+    elif (clicked_tile == TileItems.GROUP1 or clicked_tile == TileItems.GROUP2):  # 1 click
+        # half not gate applied to the 1 click number tiles
         gridScript.u3(0.5 * math.pi, 0.0, 0.0, q[1])
-
-        # is occurence for '00000' > '00001' or the other way
+        
+        # if more 1 hits then the whole tile group is revealed
         if get_one_or_zero(gridScript, q, c, 1) == 1:
             return TileItems.REVEAL_GROUP
         return TileItems.NEG_EVAL
